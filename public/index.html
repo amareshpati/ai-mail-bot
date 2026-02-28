@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>AI Mail Bot - Enqueue</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        :root {
+            --bg: #0f172a;
+            --surface: #1e293b;
+            --primary: #3b82f6;
+            --primary-hover: #2563eb;
+            --text: #f8fafc;
+            --text-secondary: #94a3b8;
+            --border: #334155;
+            --error: #ef4444;
+            --success: #22c55e;
+            --input-bg: rgba(255, 255, 255, 0.05);
+        }
+
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 40px 0;
+        }
+
+        .container {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 32px;
+            width: 100%;
+            max-width: 800px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+        }
+
+        h1 {
+            margin-top: 0;
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+
+        p {
+            color: var(--text-secondary);
+            font-size: 14px;
+            margin-bottom: 24px;
+            line-height: 1.5;
+        }
+
+        .card {
+            margin-bottom: 24px;
+            padding: 16px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        input[type="text"],
+        input[type="email"],
+        input[type="password"],
+        input[type="number"],
+        input[type="date"],
+        input[type="time"],
+        input[type="url"],
+        select {
+            width: 100%;
+            padding: 10px;
+            box-sizing: border-box;
+            background: var(--input-bg);
+            border: 1px solid var(--border);
+            color: var(--text);
+            border-radius: 6px;
+        }
+
+        input[type="file"] {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            box-sizing: border-box;
+            border: 1px dashed var(--border);
+            border-radius: 6px;
+            background: var(--input-bg);
+            color: var(--text);
+            cursor: pointer;
+        }
+
+        button {
+            width: 100%;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s ease, transform 0.1s ease;
+        }
+
+        button:hover {
+            background-color: var(--primary-hover);
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        button:disabled {
+            background-color: var(--border);
+            cursor: not-allowed;
+            color: var(--text-secondary);
+        }
+
+        .status {
+            margin-top: 16px;
+            padding: 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            display: none;
+            text-align: center;
+        }
+
+        .status.success {
+            display: block;
+            background: rgba(34, 197, 94, 0.1);
+            color: var(--success);
+            border: 1px solid var(--success);
+        }
+
+        .status.error {
+            display: block;
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--error);
+            border: 1px solid var(--error);
+        }
+
+        .loader {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s linear infinite;
+            vertical-align: middle;
+            margin-right: 8px;
+        }
+
+        @keyframes spin {
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .preview-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 16px;
+            margin-bottom: 16px;
+            font-size: 14px;
+        }
+
+        .preview-card h4 {
+            margin-top: 0;
+            margin-bottom: 8px;
+            color: var(--primary);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>AI Mail Bot</h1>
+        <p>Personalize your AI prompt and email signature below. Upload a CSV of recruiters to enqueue tasks.</p>
+
+        <!-- 1. Extract from Resume -->
+        <div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h3 style="margin: 0;">1. Extract from Resume (PDF)</h3>
+                <div>
+                    <input type="file" id="resumeExtract" accept=".pdf" style="display: none;">
+                    <button type="button" id="extractBtn"
+                        style="padding: 6px 12px; font-size: 13px; width: auto; background-color: var(--surface); border: 1px solid var(--primary); color: var(--primary);">Upload
+                        Resume</button>
+                </div>
+            </div>
+            <div id="extractStatus" style="font-size: 13px; margin-top: 8px; color: var(--primary); display: none;">
+            </div>
+        </div>
+
+        <!-- 2. Configuration Settings -->
+        <div class="card">
+            <h3 style="margin-top: 0;">2. Configuration Settings</h3>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                <div class="form-group">
+                    <label>Gemini API Key</label>
+                    <input type="password" id="cfg_GEMINI_API_KEY" placeholder="AIza...">
+                </div>
+                <div class="form-group">
+                    <label>Sender Email</label>
+                    <input type="email" id="cfg_SENDER_EMAIL" placeholder="you@gmail.com">
+                </div>
+                <div class="form-group">
+                    <label>Gmail App Password</label>
+                    <input type="password" id="cfg_GMAIL_APP_PASSWORD" placeholder="xxxx xxxx xxxx xxxx">
+                </div>
+                <div class="form-group">
+                    <label>Daily Limit</label>
+                    <input type="number" id="cfg_DAILY_LIMIT" placeholder="30">
+                </div>
+                <div class="form-group">
+                    <label>Start Date</label>
+                    <input type="date" id="cfg_START_DATE">
+                </div>
+                <div class="form-group">
+                    <label>Send Window Start</label>
+                    <input type="time" id="cfg_SEND_WINDOW_START">
+                </div>
+                <div class="form-group">
+                    <label>Send Window End</label>
+                    <input type="time" id="cfg_SEND_WINDOW_END">
+                </div>
+                <div class="form-group">
+                    <label>Dry Run Mode</label>
+                    <select id="cfg_DRY_RUN">
+                        <option value="false">Live (Send Emails)</option>
+                        <option value="true">Dry Run (Log Only)</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. AI Prompt Template -->
+        <div class="card">
+            <h3 style="margin-top: 0;">3. AI Prompt Template</h3>
+            <p style="font-size: 12px; margin-bottom: 12px;">Variables: <code>{{inferredName}}</code>,
+                <code>{{inferredCompany}}</code>, <code>{{resumeText}}</code>
+            </p>
+            <textarea id="promptTemplate" rows="10"
+                style="width: 100%; padding: 12px; box-sizing: border-box; background: var(--input-bg); color: var(--text); border: 1px solid var(--border); border-radius: 6px; font-family: monospace; font-size: 13px;">You are a professional software engineer reaching out to a recruiter.
+I have provided my resume content below to help you personalize the email.
+RESUME CONTENT:
+---
+{{resumeText}}
+---
+
+Create a highly personalized, professional, and concise email (under 150 words) for a recruiter.
+CRITICAL INSTRUCTIONS:
+1. You MUST start the email with exactly "Hi {{inferredName}}," or "Dear {{inferredName}}," and NEVER use placeholders like [Name] or [Hiring Manager].
+2. You MUST explicitly reference {{inferredCompany}} in the body of the email.
+3. Use specific details from my resume (skills, projects, or experience) that would be relevant to {{inferredCompany}} to make the email stand out.
+
+Return the output strictly in JSON format as follows:
+{
+  "subject": "Compelling subject line",
+  "htmlBody": "<p>Hi {{inferredName}},</p><p>...rest of the email HTML...</p>"
+}
+No markdown formatting for the json, just raw JSON string.</textarea>
+        </div>
+
+        <!-- 4. Email Signature -->
+        <div class="card">
+            <h3 style="margin-top: 0; margin-bottom: 16px;">4. Email Signature</h3>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                <div class="form-group">
+                    <label>Name</label>
+                    <input type="text" id="sigName" placeholder="e.g. Amaresh Pati">
+                </div>
+                <div class="form-group">
+                    <label>Role / Tagline</label>
+                    <input type="text" id="sigRole" placeholder="e.g. React Native Developer | Full Stack">
+                </div>
+                <div class="form-group">
+                    <label>Phone (+CountryCode)</label>
+                    <input type="text" id="sigPhone" placeholder="e.g. +91 9776459756">
+                </div>
+                <div class="form-group">
+                    <label>Portfolio URL</label>
+                    <input type="url" id="sigPortfolio" placeholder="e.g. https://devvloper.in">
+                </div>
+                <div class="form-group">
+                    <label>LinkedIn URL</label>
+                    <input type="url" id="sigLinkedin" placeholder="e.g. https://linkedin.com/in/amareshpati">
+                </div>
+                <div class="form-group">
+                    <label>GitHub URL</label>
+                    <input type="url" id="sigGithub" placeholder="e.g. https://github.com/amareshpati">
+                </div>
+            </div>
+        </div>
+
+        <!-- 5. Upload & Enqueue -->
+        <form id="uploadForm">
+            <h3 style="margin-bottom: 12px;">5. Upload Recruiters & Enqueue</h3>
+            <div class="form-group">
+                <input type="file" id="csvFile" name="csvFile" accept=".csv" required>
+            </div>
+            <button type="submit" id="submitBtn">Generate & Enqueue Emails</button>
+        </form>
+
+        <div id="statusMessage" class="status"></div>
+
+        <!-- Generated Previews -->
+        <div id="previewContainer" style="display: none; margin-top: 32px;">
+            <h3 style="margin-bottom: 16px; border-bottom: 1px solid var(--border); padding-bottom: 8px;">Generated
+                Email Previews</h3>
+            <div id="previewsList" style="margin-bottom: 24px; max-height: 500px; overflow-y: auto;"></div>
+            <button type="button" id="approveBtn" style="background-color: var(--success);">Approve & Start
+                Sending</button>
+            <div id="approveStatus" style="margin-top: 12px; font-size: 14px; text-align: center; display: none;"></div>
+        </div>
+    </div>
+
+    <script>
+        // Load default configs from backend on initialization
+        window.addEventListener('DOMContentLoaded', async () => {
+            try {
+                const res = await fetch('/api/config');
+                if (res.ok) {
+                    const config = await res.json();
+                    document.getElementById('cfg_GEMINI_API_KEY').value = config.GEMINI_API_KEY || '';
+                    document.getElementById('cfg_SENDER_EMAIL').value = config.SENDER_EMAIL || '';
+                    document.getElementById('cfg_GMAIL_APP_PASSWORD').value = config.GMAIL_APP_PASSWORD || '';
+                    document.getElementById('cfg_DAILY_LIMIT').value = config.DAILY_LIMIT || '';
+                    document.getElementById('cfg_START_DATE').value = config.START_DATE || '';
+                    document.getElementById('cfg_SEND_WINDOW_START').value = config.SEND_WINDOW_START || '';
+                    document.getElementById('cfg_SEND_WINDOW_END').value = config.SEND_WINDOW_END || '';
+                    document.getElementById('cfg_DRY_RUN').value = config.DRY_RUN ? 'true' : 'false';
+                }
+            } catch (err) {
+                console.error("Failed to fetch initial configuration:", err);
+            }
+        });
+
+        // Extraction Logic
+        const extractBtn = document.getElementById('extractBtn');
+        const resumeExtractInput = document.getElementById('resumeExtract');
+        const extractStatus = document.getElementById('extractStatus');
+
+        extractBtn.addEventListener('click', () => resumeExtractInput.click());
+
+        resumeExtractInput.addEventListener('change', async (e) => {
+            if (!e.target.files[0]) return;
+
+            extractStatus.style.display = 'block';
+            extractStatus.textContent = 'Extracting details... Please wait.';
+            extractBtn.disabled = true;
+
+            const formData = new FormData();
+            formData.append('resume', e.target.files[0]);
+
+            // Pass API Key in case user overrode it
+            formData.append('apiKey', document.getElementById('cfg_GEMINI_API_KEY').value);
+
+            try {
+                const response = await fetch('/api/extract-resume', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) throw new Error('Failed to extract data');
+                const data = await response.json();
+
+                document.getElementById('sigName').value = data.name || '';
+                document.getElementById('sigRole').value = data.role || '';
+                document.getElementById('sigPhone').value = data.phone || '';
+                document.getElementById('sigPortfolio').value = data.portfolio || '';
+                document.getElementById('sigLinkedin').value = data.linkedin || '';
+                document.getElementById('sigGithub').value = data.github || '';
+
+                if (data.suggestedPrompt) {
+                    document.getElementById('promptTemplate').value = data.suggestedPrompt;
+                }
+
+                extractStatus.style.color = 'var(--success)';
+                extractStatus.textContent = 'Extraction complete! Please review the auto-generated prompt and details.';
+            } catch (err) {
+                extractStatus.style.color = 'var(--error)';
+                extractStatus.textContent = `Extraction failed: ${err.message}`;
+            } finally {
+                extractBtn.disabled = false;
+                e.target.value = ''; // Reset input
+            }
+        });
+
+        // Form Submit
+        document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const fileInput = document.getElementById('csvFile');
+            const submitBtn = document.getElementById('submitBtn');
+            const statusMsg = document.getElementById('statusMessage');
+            const previewContainer = document.getElementById('previewContainer');
+            const previewsList = document.getElementById('previewsList');
+
+            if (!fileInput.files[0]) return;
+
+            const formData = new FormData();
+            formData.append('csvFile', fileInput.files[0]);
+
+            const formatUrl = (url) => url && !/^https?:\/\//i.test(url) ? `https://${url}` : url;
+
+            // Text overrides
+            formData.append('promptTemplate', document.getElementById('promptTemplate').value);
+            formData.append('sigName', document.getElementById('sigName').value);
+            formData.append('sigRole', document.getElementById('sigRole').value);
+            formData.append('sigPhone', document.getElementById('sigPhone').value);
+            formData.append('sigPortfolio', formatUrl(document.getElementById('sigPortfolio').value));
+            formData.append('sigLinkedin', formatUrl(document.getElementById('sigLinkedin').value));
+            formData.append('sigGithub', formatUrl(document.getElementById('sigGithub').value));
+
+            // Config overrides
+            formData.append('GEMINI_API_KEY', document.getElementById('cfg_GEMINI_API_KEY').value);
+            formData.append('SENDER_EMAIL', document.getElementById('cfg_SENDER_EMAIL').value);
+            formData.append('GMAIL_APP_PASSWORD', document.getElementById('cfg_GMAIL_APP_PASSWORD').value);
+            formData.append('DAILY_LIMIT', document.getElementById('cfg_DAILY_LIMIT').value);
+            formData.append('START_DATE', document.getElementById('cfg_START_DATE').value);
+            formData.append('SEND_WINDOW_START', document.getElementById('cfg_SEND_WINDOW_START').value);
+            formData.append('SEND_WINDOW_END', document.getElementById('cfg_SEND_WINDOW_END').value);
+            formData.append('DRY_RUN', document.getElementById('cfg_DRY_RUN').value);
+
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="loader"></span> Processing...';
+            statusMsg.className = 'status';
+            previewContainer.style.display = 'none';
+            previewsList.innerHTML = '';
+
+            try {
+                const response = await fetch('/api/enqueue', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    statusMsg.textContent = `Success! Generated and scheduled ${data.enqueued} emails.`;
+                    statusMsg.className = 'status success';
+                    fileInput.value = '';
+
+                    // Render Previews
+                    if (data.generatedEmails && data.generatedEmails.length > 0) {
+                        previewContainer.style.display = 'block';
+
+                        // Reset approve button state
+                        const approveBtn = document.getElementById('approveBtn');
+                        const approveStatus = document.getElementById('approveStatus');
+                        approveBtn.style.display = 'block';
+                        approveBtn.disabled = false;
+                        approveBtn.innerHTML = 'Approve & Start Sending';
+                        approveStatus.style.display = 'none';
+
+                        data.generatedEmails.forEach(emailItem => {
+                            const dateStr = new Date(emailItem.sendAt).toLocaleString();
+                            const card = document.createElement('div');
+                            card.className = 'preview-card';
+                            card.id = `preview-${emailItem.id}`;
+                            card.innerHTML = `
+                                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+                                    <h4 style="margin: 0; flex-grow: 1;" id="subject-text-${emailItem.id}">Subject: ${emailItem.subject}</h4>
+                                    <button onclick="toggleEdit('${emailItem.id}')" id="edit-btn-${emailItem.id}" style="width: auto; padding: 4px 8px; font-size: 12px; background: transparent; border: 1px solid var(--primary); color: var(--primary); margin-left: 12px;">Edit</button>
+                                </div>
+                                <div id="edit-form-${emailItem.id}" style="display: none; margin-bottom: 12px; padding: 12px; background: rgba(0,0,0,0.2); border-radius: 6px; border: 1px solid var(--border);">
+                                    <label style="font-size: 12px;">Subject:</label>
+                                    <input type="text" id="edit-subject-${emailItem.id}" value="${emailItem.subject.replace(/"/g, '&quot;')}" style="width: 100%; box-sizing: border-box; margin-bottom: 8px; font-size: 13px;">
+                                    <label style="font-size: 12px;">Body (HTML):</label>
+                                    <textarea id="edit-body-${emailItem.id}" rows="6" style="width: 100%; box-sizing: border-box; padding: 8px; font-family: monospace; font-size: 12px; background: var(--input-bg); color: var(--text); border: 1px solid var(--border); border-radius: 4px;">${emailItem.htmlBody}</textarea>
+                                    <div style="display: flex; gap: 8px; margin-top: 8px;">
+                                        <button onclick="saveEdit('${emailItem.id}')" style="width: auto; padding: 6px 12px; font-size: 12px; background: var(--success);">Save</button>
+                                        <button onclick="toggleEdit('${emailItem.id}')" style="width: auto; padding: 6px 12px; font-size: 12px; background: transparent; border: 1px solid var(--border); color: var(--text);">Cancel</button>
+                                    </div>
+                                </div>
+                                <div style="color: var(--text-secondary); margin-bottom: 12px; font-size: 12px;">
+                                    <strong>To:</strong> ${emailItem.name} &lt;${emailItem.email}&gt; | <strong>Company:</strong> ${emailItem.company} | <strong>Scheduled For:</strong> ${dateStr}
+                                </div>
+                                <div id="body-text-${emailItem.id}" style="background: var(--surface); padding: 12px; border-radius: 6px; border: 1px solid var(--border); overflow-x: auto;">
+                                    ${emailItem.htmlBody}
+                                </div>
+                            `;
+                            previewsList.appendChild(card);
+                        });
+                    }
+
+                } else {
+                    statusMsg.textContent = `Error: ${data.error || 'Failed to process CSV'} `;
+                    statusMsg.className = 'status error';
+                }
+            } catch (err) {
+                statusMsg.textContent = `Error: ${err.message} `;
+                statusMsg.className = 'status error';
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = 'Generate & Enqueue Emails';
+            }
+        });
+
+        // Setup approve button logic
+        document.getElementById('approveBtn').addEventListener('click', async () => {
+            const approveBtn = document.getElementById('approveBtn');
+            const approveStatus = document.getElementById('approveStatus');
+
+            approveBtn.disabled = true;
+            approveBtn.innerHTML = '<span class="loader"></span> Starting worker...';
+            approveStatus.style.display = 'block';
+            approveStatus.style.color = 'var(--text-secondary)';
+            approveStatus.textContent = 'Approving emails...';
+
+            try {
+                const res = await fetch('/api/approve', { method: 'POST' });
+                const data = await res.json();
+                console.log(res.ok);
+                if (res.ok && data.success) {
+                    approveStatus.style.color = 'var(--success)';
+                    approveStatus.innerHTML = `< strong > Success!</strong > ${data.approved} emails have been moved to the active queue.The background worker is now processing them at their scheduled times.`;
+                    approveBtn.style.display = 'none';
+                } else {
+                    approveStatus.style.color = 'var(--error)';
+                    approveStatus.textContent = 'Failed to approve emails: ' + (data.error || 'Unknown error');
+                    approveBtn.disabled = false;
+                    approveBtn.innerHTML = 'Try Again';
+                }
+            } catch (err) {
+                approveStatus.style.color = 'var(--error)';
+                approveStatus.textContent = 'Error: ' + err.message;
+                approveBtn.disabled = false;
+                approveBtn.innerHTML = 'Try Again';
+            }
+        });
+
+        // Edit functionality functions
+        window.toggleEdit = function (id) {
+            const form = document.getElementById(`edit-form-${id}`);
+            const editBtn = document.getElementById(`edit-btn-${id}`);
+            if (form.style.display === 'none') {
+                form.style.display = 'block';
+                editBtn.style.display = 'none';
+            } else {
+                form.style.display = 'none';
+                editBtn.style.display = 'block';
+            }
+        };
+
+        window.saveEdit = async function (id) {
+            const subject = document.getElementById(`edit-subject-${id}`).value;
+            const htmlBody = document.getElementById(`edit-body-${id}`).value;
+            const btn = document.querySelector(`#edit-form-${id} button`);
+
+            const originalText = btn.innerHTML;
+            btn.innerHTML = 'Saving...';
+            btn.disabled = true;
+
+            try {
+                const res = await fetch(`/api/edit-draft/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ subject, htmlBody })
+                });
+
+                const data = await res.json();
+                if (res.ok && data.success) {
+                    // Update UI
+                    document.getElementById(`subject-text-${id}`).textContent = `Subject: ${subject}`;
+                    document.getElementById(`body-text-${id}`).innerHTML = htmlBody;
+                    toggleEdit(id);
+                } else {
+                    alert('Failed to save edit: ' + (data.error || 'Unknown error'));
+                }
+            } catch (err) {
+                alert('Error saving edit: ' + err.message);
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        };
+    </script>
+</body>
+
+</html>
